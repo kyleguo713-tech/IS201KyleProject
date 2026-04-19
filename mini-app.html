@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kyle Snake mini game</title>
+    <style>
+        :root {
+            --cream: #faf8f5;
+            --paper: #f8f2ea;
+            --red: #b83228;
+            --red-dark: #8b2420;
+            --gold: #c9a227;
+            --gold-soft: #e0c76a;
+            --text: #2a211c;
+            --muted: #5c483c;
+            --accent: #9e2a2a;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Georgia, "Times New Roman", serif;
+            background-color: #2a1218;
+            background-image: url("assets/img/chinese-festive-bg.jpg");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1rem 1rem 2rem;
+        }
+        /* Frosted strip so titles read on light / busy festive art */
+        header {
+            max-width: 38rem;
+            width: 100%;
+            margin-bottom: 0.75rem;
+            text-align: center;
+            background: rgba(255, 252, 248, 0.92);
+            padding: 1rem 1.25rem 1.15rem;
+            border-radius: 14px;
+            border: 1px solid rgba(139, 36, 32, 0.18);
+            box-shadow: 0 6px 24px rgba(40, 24, 16, 0.12);
+        }
+        header h1 {
+            margin: 0 0 0.25rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            font-size: clamp(1.2rem, 4.5vw, 1.65rem);
+            font-family: Arial, Helvetica, sans-serif;
+            color: var(--red-dark);
+            line-height: 1.25;
+        }
+        header .tagline {
+            margin: 0 0 0.35rem;
+            font-size: 0.88rem;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        header p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.9rem;
+            line-height: 1.45;
+        }
+        header a {
+            color: var(--red);
+            font-family: Arial, sans-serif;
+            font-weight: 600;
+        }
+        header a:hover {
+            color: var(--gold);
+        }
+        .panel {
+            position: relative;
+            background: var(--paper);
+            border-radius: 14px;
+            padding: 0.75rem;
+            border: 1px solid rgba(139, 36, 32, 0.2);
+            box-shadow: 0 10px 28px rgba(40, 24, 16, 0.14);
+        }
+        .hud {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.25rem 1rem;
+            margin-bottom: 0.5rem;
+            padding: 0 0.15rem;
+            font-variant-numeric: tabular-nums;
+            font-size: 0.85rem;
+            color: var(--text);
+        }
+        .hud strong {
+            color: var(--accent);
+            font-size: 1.05rem;
+        }
+        .hud .combo-line {
+            grid-column: 1 / -1;
+            color: var(--muted);
+        }
+        .hud .combo-line strong {
+            color: var(--gold);
+        }
+        .game-wrap {
+            position: relative;
+            display: inline-block;
+            line-height: 0;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: inset 0 0 24px rgba(90, 28, 24, 0.07);
+            border: 2px solid rgba(201, 162, 39, 0.5);
+        }
+        #game {
+            display: block;
+            width: min(92vw, 400px);
+            height: auto;
+            border-radius: 8px;
+            background: #f5f0e8;
+            touch-action: none;
+        }
+        .overlay {
+            position: absolute;
+            inset: 0;
+            border-radius: 8px;
+            background: rgba(248, 242, 236, 0.96);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 1rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        .overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .overlay h2 {
+            margin: 0 0 0.35rem;
+            font-size: clamp(1.05rem, 3.5vw, 1.25rem);
+            font-family: Arial, Helvetica, sans-serif;
+            color: var(--red);
+            line-height: 1.2;
+        }
+        .overlay p {
+            margin: 0 0 0.75rem;
+            color: var(--muted);
+            font-size: 0.85rem;
+            max-width: 17rem;
+            line-height: 1.4;
+        }
+        .diff-pick {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            justify-content: center;
+            margin-bottom: 0.75rem;
+        }
+        .diff-pick button {
+            cursor: pointer;
+            border: 1px solid rgba(184, 50, 40, 0.22);
+            border-radius: 8px;
+            padding: 0.4rem 0.75rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: rgba(243, 236, 228, 0.96);
+            color: var(--text);
+            font-family: Arial, sans-serif;
+        }
+        .diff-pick button.selected {
+            background: rgba(184, 50, 40, 0.12);
+            border-color: var(--red);
+            color: var(--red-dark);
+        }
+        button.play {
+            cursor: pointer;
+            border: none;
+            border-radius: 10px;
+            padding: 0.65rem 1.5rem;
+            font-weight: 700;
+            font-size: 1rem;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(165deg, var(--red) 0%, var(--red-dark) 100%);
+            color: #f5f0e8;
+            border: 2px solid rgba(201, 162, 39, 0.55);
+        }
+        button.play:hover {
+            filter: brightness(1.06);
+        }
+        .hint {
+            margin-top: 1rem;
+            max-width: 38rem;
+            font-size: 0.78rem;
+            color: var(--text);
+            text-align: center;
+            line-height: 1.55;
+            background: rgba(255, 252, 248, 0.92);
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            border: 1px solid rgba(139, 36, 32, 0.15);
+            box-shadow: 0 4px 16px rgba(40, 24, 16, 0.08);
+        }
+        .hint kbd {
+            display: inline-block;
+            padding: 0.1rem 0.35rem;
+            border-radius: 4px;
+            background: rgba(139, 36, 32, 0.1);
+            font-size: 0.75rem;
+            color: var(--red-dark);
+            border: 1px solid rgba(139, 36, 32, 0.2);
+        }
+        .mobile-pad {
+            display: none;
+            margin-top: 0.75rem;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.35rem;
+            max-width: 200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .mobile-pad .pad-empty {
+            min-height: 2.5rem;
+        }
+        .mobile-pad button {
+            min-height: 2.5rem;
+            border: 1px solid rgba(184, 50, 40, 0.18);
+            border-radius: 8px;
+            background: rgba(243, 236, 228, 0.97);
+            color: var(--red);
+            font-size: 1.1rem;
+            cursor: pointer;
+        }
+        .mobile-pad button:active {
+            background: rgba(184, 50, 40, 0.12);
+        }
+        @media (max-width: 520px) {
+            .mobile-pad { display: grid; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Kyle Snake mini game</h1>
+        <p class="tagline">Combo chains · golden treats · three difficulties</p>
+        <p><a href="fromScratch.html">← Back to scratch page</a></p>
+    </header>
+
+    <div class="panel">
+        <div class="hud">
+            <div>Score <strong id="score">0</strong></div>
+            <span>Best <strong id="best">0</strong></span>
+            <div class="combo-line">Combo <strong id="combo">×1</strong> · Max <strong id="maxcombo">1</strong></div>
+        </div>
+        <div class="game-wrap">
+            <canvas id="game" width="400" height="400" aria-label="Kyle Snake mini game"></canvas>
+            <div id="overlay" class="overlay visible">
+                <h2 id="overlay-title">Kyle Snake mini game</h2>
+                <p id="overlay-msg">Pick a difficulty, then play. Chain eats within a few seconds to multiply points. Red = normal bite; gold = bonus points.</p>
+                <div class="diff-pick" id="diff-pick" role="group" aria-label="Difficulty">
+                    <button type="button" class="selected" data-diff="chill" title="Slower start">Chill</button>
+                    <button type="button" data-diff="normal" title="Balanced">Normal</button>
+                    <button type="button" data-diff="harsh" title="Fast">Harsh</button>
+                </div>
+                <button type="button" class="play" id="btn-start">Play</button>
+            </div>
+        </div>
+        <div class="mobile-pad" id="pad" aria-hidden="true">
+            <span class="pad-empty" aria-hidden="true"></span>
+            <button type="button" data-dir="up" aria-label="Up">↑</button>
+            <span class="pad-empty" aria-hidden="true"></span>
+            <button type="button" data-dir="left" aria-label="Left">←</button>
+            <button type="button" data-dir="down" aria-label="Down">↓</button>
+            <button type="button" data-dir="right" aria-label="Right">→</button>
+        </div>
+    </div>
+
+    <p class="hint">
+        <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ·
+        <kbd>Space</kbd> start · pause when running ·
+        Combo resets if you wait too long between bites. Golden treats appear randomly.
+    </p>
+
+    <script>
+(function () {
+    var COLS = 20;
+    var ROWS = 20;
+    var COMBO_WINDOW_MS = 2800;
+    var GOLD_CHANCE = 0.16;
+
+    var canvas = document.getElementById("game");
+    var ctx = canvas.getContext("2d");
+    var scoreEl = document.getElementById("score");
+    var bestEl = document.getElementById("best");
+    var comboEl = document.getElementById("combo");
+    var maxComboEl = document.getElementById("maxcombo");
+    var overlay = document.getElementById("overlay");
+    var overlayTitle = document.getElementById("overlay-title");
+    var overlayMsg = document.getElementById("overlay-msg");
+    var btnStart = document.getElementById("btn-start");
+    var diffPick = document.getElementById("diff-pick");
+
+    var CELL = canvas.width / COLS;
+    var BEST_KEY = "snake-neon-best-kyle";
+    var MAXCOMBO_KEY = "snake-neon-maxcombo-kyle";
+
+    var difficulty = "chill";
+    var snake;
+    var dir;
+    var nextDir;
+    var food;
+    var score;
+    var tickMs;
+    var tickMin;
+    var running;
+    var paused;
+    var lastMove;
+    var rafId;
+
+    var comboChain;
+    var lastEatTime;
+    var sessionMaxCombo;
+
+    var particles;
+
+    function loadBest() {
+        try {
+            return parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0;
+        } catch (e) {
+            return 0;
+        }
+    }
+
+    function saveBest(n) {
+        try {
+            localStorage.setItem(BEST_KEY, String(n));
+        } catch (e) {}
+    }
+
+    function loadMaxComboRecord() {
+        try {
+            return parseInt(localStorage.getItem(MAXCOMBO_KEY) || "1", 10) || 1;
+        } catch (e) {
+            return 1;
+        }
+    }
+
+    function saveMaxComboRecord(n) {
+        try {
+            localStorage.setItem(MAXCOMBO_KEY, String(n));
+        } catch (e) {}
+    }
+
+    function randCell() {
+        return {
+            x: Math.floor(Math.random() * COLS),
+            y: Math.floor(Math.random() * ROWS)
+        };
+    }
+
+    function foodFree(p) {
+        for (var i = 0; i < snake.length; i++) {
+            if (snake[i].x === p.x && snake[i].y === p.y) return false;
+        }
+        return true;
+    }
+
+    function spawnFood() {
+        var p;
+        var guard = 0;
+        do {
+            p = randCell();
+            guard++;
+        } while (!foodFree(p) && guard < 500);
+        food = {
+            x: p.x,
+            y: p.y,
+            gold: Math.random() < GOLD_CHANCE
+        };
+    }
+
+    function applyDifficulty() {
+        if (difficulty === "chill") {
+            tickMs = 152;
+            tickMin = 72;
+        } else if (difficulty === "harsh") {
+            tickMs = 98;
+            tickMin = 42;
+        } else {
+            tickMs = 126;
+            tickMin = 54;
+        }
+    }
+
+    function resetGame() {
+        var mid = Math.floor(COLS / 2);
+        snake = [
+            { x: mid - 1, y: mid },
+            { x: mid - 2, y: mid },
+            { x: mid - 3, y: mid }
+        ];
+        dir = { x: 1, y: 0 };
+        nextDir = { x: 1, y: 0 };
+        score = 0;
+        applyDifficulty();
+        comboChain = 1;
+        lastEatTime = 0;
+        sessionMaxCombo = 1;
+        particles = [];
+        spawnFood();
+        scoreEl.textContent = "0";
+        comboEl.textContent = "×1";
+        maxComboEl.textContent = String(Math.max(sessionMaxCombo, loadMaxComboRecord()));
+    }
+
+    function burstParticles(cx, cy, color) {
+        var i;
+        for (i = 0; i < 10; i++) {
+            var ang = (Math.PI * 2 * i) / 10 + Math.random() * 0.5;
+            var sp = 1.2 + Math.random() * 2.2;
+            particles.push({
+                x: cx,
+                y: cy,
+                vx: Math.cos(ang) * sp,
+                vy: Math.sin(ang) * sp,
+                life: 1,
+                color: color
+            });
+        }
+    }
+
+    function setOverlay(title, msg, showBtn, btnText) {
+        overlayTitle.textContent = title;
+        overlayMsg.textContent = msg;
+        btnStart.textContent = btnText || "Play";
+        btnStart.style.display = showBtn ? "" : "none";
+        diffPick.style.display = "";
+        overlay.classList.add("visible");
+    }
+
+    function hideOverlay() {
+        overlay.classList.remove("visible");
+    }
+
+    function gameOver() {
+        running = false;
+        cancelAnimationFrame(rafId);
+        var best = loadBest();
+        if (score > best) {
+            best = score;
+            saveBest(best);
+        }
+        var rec = loadMaxComboRecord();
+        if (sessionMaxCombo > rec) {
+            saveMaxComboRecord(sessionMaxCombo);
+            rec = sessionMaxCombo;
+        }
+        bestEl.textContent = String(best);
+        maxComboEl.textContent = String(rec);
+        diffPick.style.display = "";
+        setOverlay(
+            "Game over",
+            "Score " + score + " · best combo ×" + sessionMaxCombo + ". Space or Play to retry.",
+            true,
+            "Play again"
+        );
+    }
+
+    function tryDir(nx, ny) {
+        if (nx === -dir.x && ny === -dir.y) return;
+        nextDir = { x: nx, y: ny };
+    }
+
+    function step() {
+        var now = Date.now();
+        dir = { x: nextDir.x, y: nextDir.y };
+        var head = snake[0];
+        var nh = { x: head.x + dir.x, y: head.y + dir.y };
+
+        if (nh.x < 0 || nh.x >= COLS || nh.y < 0 || nh.y >= ROWS) {
+            gameOver();
+            return;
+        }
+        var i;
+        for (i = 0; i < snake.length; i++) {
+            if (snake[i].x === nh.x && snake[i].y === nh.y) {
+                gameOver();
+                return;
+            }
+        }
+
+        snake.unshift(nh);
+        if (nh.x === food.x && nh.y === food.y) {
+            if (lastEatTime && now - lastEatTime < COMBO_WINDOW_MS) {
+                comboChain = Math.min(comboChain + 1, 8);
+            } else {
+                comboChain = 1;
+            }
+            lastEatTime = now;
+            if (comboChain > sessionMaxCombo) sessionMaxCombo = comboChain;
+
+            var base = food.gold ? 28 : 10;
+            var gained = base * comboChain;
+            score += gained;
+            scoreEl.textContent = String(score);
+            comboEl.textContent = "×" + comboChain;
+
+            tickMs = Math.max(tickMin, tickMs - (food.gold ? 2 : 3));
+
+            var px = food.x * CELL + CELL / 2;
+            var py = food.y * CELL + CELL / 2;
+            burstParticles(px, py, food.gold ? "#d4af37" : "#e07a5f");
+
+            spawnFood();
+        } else {
+            snake.pop();
+        }
+    }
+
+    function roundRect(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+    }
+
+    function draw() {
+        var t = Date.now() / 1000;
+        ctx.fillStyle = "#f5f0e8";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        var gx, gy;
+        ctx.strokeStyle = "rgba(184, 50, 40, 0.12)";
+        ctx.lineWidth = 1;
+        for (gx = 0; gx <= COLS; gx++) {
+            ctx.beginPath();
+            ctx.moveTo(gx * CELL, 0);
+            ctx.lineTo(gx * CELL, canvas.height);
+            ctx.stroke();
+        }
+        for (gy = 0; gy <= ROWS; gy++) {
+            ctx.beginPath();
+            ctx.moveTo(0, gy * CELL);
+            ctx.lineTo(canvas.width, gy * CELL);
+            ctx.stroke();
+        }
+
+        var pulse = 0.65 + 0.35 * Math.sin(t * 5);
+        var fr = food.gold ? "#d4af37" : "#b83228";
+        var pad = 1.2 + (food.gold ? pulse * 1.5 : pulse * 0.8);
+        ctx.fillStyle = fr;
+        roundRect(
+            food.x * CELL + pad,
+            food.y * CELL + pad,
+            CELL - pad * 2,
+            CELL - pad * 2,
+            5
+        );
+        ctx.fill();
+        if (food.gold) {
+            ctx.strokeStyle = "rgba(212, 175, 55, 0.75)";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        for (i = snake.length - 1; i >= 0; i--) {
+            var seg = snake[i];
+            var p = 1.4;
+            var rad = i === 0 ? 6 : 4;
+            var blend = i / Math.max(1, snake.length - 1);
+            ctx.fillStyle =
+                i === 0
+                    ? "#9e2a2a"
+                    : "rgb(" +
+                      Math.round(200 - blend * 70) +
+                      "," +
+                      Math.round(70 - blend * 35) +
+                      "," +
+                      Math.round(55 - blend * 25) +
+                      ")";
+            roundRect(
+                seg.x * CELL + p,
+                seg.y * CELL + p,
+                CELL - p * 2,
+                CELL - p * 2,
+                rad
+            );
+            ctx.fill();
+        }
+
+        for (i = particles.length - 1; i >= 0; i--) {
+            var pt = particles[i];
+            pt.x += pt.vx;
+            pt.y += pt.vy;
+            pt.life -= 0.045;
+            if (pt.life <= 0) {
+                particles.splice(i, 1);
+                continue;
+            }
+            ctx.globalAlpha = pt.life;
+            ctx.fillStyle = pt.color;
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+
+        if (paused && running) {
+            ctx.fillStyle = "rgba(248, 242, 236, 0.88)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#2a211c";
+            ctx.font = "600 14px Georgia, serif";
+            ctx.textAlign = "center";
+            ctx.fillText("Paused — Space to continue", canvas.width / 2, canvas.height / 2);
+        }
+    }
+
+    var i;
+
+    function loop(now) {
+        if (!running) return;
+        if (paused) {
+            draw();
+            rafId = requestAnimationFrame(loop);
+            return;
+        }
+        if (lastMove === undefined) lastMove = now;
+        if (now - lastMove >= tickMs) {
+            lastMove = now;
+            step();
+            if (!running) return;
+        }
+        draw();
+        rafId = requestAnimationFrame(loop);
+    }
+
+    function startLoop() {
+        lastMove = undefined;
+        rafId = requestAnimationFrame(loop);
+    }
+
+    function beginPlay() {
+        resetGame();
+        running = true;
+        paused = false;
+        hideOverlay();
+        diffPick.style.display = "none";
+        startLoop();
+    }
+
+    bestEl.textContent = String(loadBest());
+    maxComboEl.textContent = String(loadMaxComboRecord());
+
+    diffPick.addEventListener("click", function (e) {
+        var b = e.target.closest("button[data-diff]");
+        if (!b) return;
+        difficulty = b.getAttribute("data-diff");
+        var buttons = diffPick.querySelectorAll("button[data-diff]");
+        for (i = 0; i < buttons.length; i++) {
+            buttons[i].classList.toggle("selected", buttons[i] === b);
+        }
+    });
+
+    btnStart.addEventListener("click", function () {
+        if (!running || overlay.classList.contains("visible")) {
+            beginPlay();
+        }
+    });
+
+    document.addEventListener("keydown", function (e) {
+        var k = e.key.toLowerCase();
+        if (k === " " || k === "spacebar") {
+            e.preventDefault();
+            if (overlay.classList.contains("visible")) {
+                beginPlay();
+                return;
+            }
+            if (running) {
+                paused = !paused;
+                if (!paused) startLoop();
+            }
+            return;
+        }
+        if (!running || paused) return;
+        if (k === "arrowup" || k === "w") tryDir(0, -1);
+        else if (k === "arrowdown" || k === "s") tryDir(0, 1);
+        else if (k === "arrowleft" || k === "a") tryDir(-1, 0);
+        else if (k === "arrowright" || k === "d") tryDir(1, 0);
+    });
+
+    document.getElementById("pad").addEventListener("click", function (e) {
+        var t = e.target;
+        if (t.getAttribute("data-dir") && running && !paused) {
+            var d = t.getAttribute("data-dir");
+            if (d === "up") tryDir(0, -1);
+            else if (d === "down") tryDir(0, 1);
+            else if (d === "left") tryDir(-1, 0);
+            else if (d === "right") tryDir(1, 0);
+        }
+    });
+
+    draw();
+})();
+    </script>
+</body>
+</html>
